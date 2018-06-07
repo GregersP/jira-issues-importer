@@ -33,7 +33,8 @@ class Project:
 
     self._add_labels(item)
 
-    self._add_comments(item)
+    self._add_
+   s(item)
     
     self._add_relationships(item)
 
