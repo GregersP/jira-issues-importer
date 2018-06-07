@@ -77,7 +77,7 @@ class Project:
 
     self._project['Issues'].append({"title": item.title.text[item.title.text.index("]") + 2:len(item.title.text)],
       'key': item.key.text,
-      "body": self._htmlentitydecode(item.description.text) + '\n<i>' + item.title.text[0:item.title.text.index("]") + 1] + ' created by ' + item.reporter.get('username') + '</i>',
+      "body": item.description.text + '\n<i>' + item.title.text[0:item.title.text.index("]") + 1] + ' created by ' + item.reporter.get('username') + '</i>',
       'created_at': self._convert_to_iso(item.created.text),
       'closed_at': closed_at,
       'updated_at': self._convert_to_iso(item.updated.text),
@@ -123,7 +123,7 @@ class Project:
       for comment in item.comments.comment:
         self._project['Issues'][-1]['comments'].append(
           {"created_at": self._convert_to_iso(comment.get('created')),
-           "body": self._htmlentitydecode(comment.text) + '\n<i>by ' + comment.get('author') + '</i>'
+           "body": comment.text + '\n<i>by ' + comment.get('author') + '</i>'
           })
     except AttributeError:
       pass
