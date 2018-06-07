@@ -123,7 +123,7 @@ class Project:
       for comment in item.comments.comment:
         self._project['Issues'][-1]['comments'].append(
           {"created_at": self._convert_to_iso(comment.get('created')),
-           "body": comment.text
+           "body": self._htmlentitydecode(comment.text) + '\n<i>by ' + comment.get('author') + '</i>'
           })
     except AttributeError:
       pass
@@ -154,4 +154,3 @@ class Project:
     s = s.replace(' ' * 8, '')
     return re.sub('&(%s);' % '|'.join(name2codepoint),
         lambda m: unichr(name2codepoint[m.group(1)]), s)
-    
