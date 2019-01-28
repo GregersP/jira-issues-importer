@@ -16,7 +16,7 @@ class Importer:
   
   _PLACEHOLDER_SUFFIX = "@PEND"
   
-  _DEFAULT_TIME_OUT = 120.0
+  _DEFAULT_TIME_OUT = 180.0
   
   def __init__(self, options, project):
     self.options = options
@@ -118,6 +118,8 @@ class Importer:
     headers = {'Accept': 'application/vnd.github.golden-comet-preview+json'}
     response = self.upload_github_issue(issue, comments, headers)
     status_url = response.json()['url']
+    # GregersP back off when ratelimit is near
+    self._check_ratelimit(response)
     gh_issue_url = self.wait_for_issue_creation(status_url, headers).json()['issue_url']
     gh_issue_id = int(gh_issue_url.split('/')[-1])
     issue['githubid'] = gh_issue_id
@@ -131,6 +133,7 @@ class Importer:
       issue_url = self.github_url + '/import/issues'
       issue_data = {'issue': issue, 'comments': comments}
       response = requests.post(issue_url, json=issue_data, auth=(self.options.user, self.options.passwd), headers=headers, timeout=Importer._DEFAULT_TIME_OUT)
+
       if response.status_code == 202:
           return response
       elif response.status_code == 422:
@@ -151,6 +154,10 @@ class Importer:
       If the status is 'pending', it sleeps, then rechecks until the status is
       either 'imported' or 'failed'.
       """
+
+      # Greg: exponential backoff stuffHmm,
+      waitingtime = 1
+
       while True:  # keep checking until status is something other than 'pending'
           response = requests.get(status_url, auth=(self.options.user, self.options.passwd), headers=headers, timeout=Importer._DEFAULT_TIME_OUT)
           if response.status_code != 200:
@@ -161,7 +168,10 @@ class Importer:
           status = response.json()['status']
           if status != 'pending':
               break
-          time.sleep(1)
+          time.sleep(waitingtime)
+          waitingtime = waitingtime * 2
+          if waitingtime > 64:
+              waitingtime = 64
       if status == 'imported':
           print "Imported Issue:", response.json()['issue_url']
       elif status == 'failed':
@@ -227,7 +237,9 @@ class Importer:
         raise RuntimeError(
             "Failed to list all comments due to unexpected HTTP status code: {}".format(response.status_code)
         )
-      
+
+    self._check_ratelimit(response)
+
     comments = response.json()
     for comment in comments:
       # print "handling comment " + comment['url']
@@ -267,4 +279,14 @@ class Importer:
         raise RuntimeError(
             "Failed to patch comment {} due to unexpected HTTP status code: {} ; text: {}".format(url, response.status_code, response.text)
         )
+    self._check_ratelimit(response)
+
     
+
+# GregersP patch for ratelimit
+  def _check_ratelimit(self, response):
+      if int(response.headers['X-RateLimit-Remaining']) < 60 :
+          print "RateLimit remaining was only: " + response.headers['X-RateLimit-Remaining']
+          waitingtime = ( 60 - int(response.headers['X-RateLimit-Remaining']) ) * 60
+          print "Slowing down by sleeping for " + str(waitingtime) + " secs"
+          time.sleep(waitingtime)
