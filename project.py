@@ -77,7 +77,7 @@ class Project:
 
     self._project['Issues'].append({"title": item.title.text[item.title.text.index("]") + 2:len(item.title.text)],
       'key': item.key.text,
-      "body": item.description.text,
+      "body": (item.description.text if item.description.text else "empty description"),
       'created_at': self._convert_to_iso(item.created.text),
       'closed_at': closed_at,
       'updated_at': self._convert_to_iso(item.updated.text),
